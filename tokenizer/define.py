@@ -186,6 +186,10 @@ class StringConverter(object):
     """
     EMPTY_TEXT 是空文本的标准形
     """
+    TEXT_TYPE = type(EMPTY_TEXT)  # type: type[Text]
+    """
+    TEXT_TYPE 是文本标准形的类型
+    """
 
     @staticmethod
     def to_text(string):  # type: (Text | bytes) -> Text
@@ -226,29 +230,56 @@ class StringConverter(object):
         return text.encode(encoding="utf-8")
 
     @staticmethod
-    def error_to_text(error):  # type: (Exception | None) -> Text
+    def error_to_text(error):  # type: (BaseException | None) -> Text
         """
         error_to_text 将给出的异常转换为文本的标准形
 
         Args:
-            error (Exception | None):
+            error (BaseException | None):
                 欲化为文本标准形的异常
 
         Returns:
             Text: 异常的文本标准形
         """
-        try:
-            return type(StringConverter.EMPTY_TEXT)(error)
-        except UnicodeDecodeError:
-            return StringConverter.to_text(str(error))
+        # Entry point for Python 3
+        if isinstance(StringConverter.EMPTY_TEXT, str):
+            return str(error)
+
+        # If this exception have non-native unicode method
+        provider = getattr(type(error), "__unicode__", None)
+        original = getattr(BaseException, "__unicode__", None)
+        if provider is not None and provider is not original:
+            return StringConverter.to_text(provider(error))
+
+        # If this exception have non-native str method
+        if not isinstance(error, BaseException):
+            return StringConverter.to_text(error.__str__())
+        if type(error).__str__ is not BaseException.__str__:
+            return StringConverter.to_text(error.__str__())
+
+        # Process each argument of the exception
+        messages = []
+        for i in error.args:
+            if isinstance(i, (StringConverter.TEXT_TYPE, bytes)):
+                messages.append(StringConverter.to_text(i))
+            elif isinstance(i, BaseException):
+                messages.append(StringConverter.error_to_text(i))
+            else:
+                messages.append(StringConverter.to_text(i.__str__()))
+
+        # Construct the final message
+        result = StringConverter.to_text(", ").join(messages)
+        if len(messages) > 1:
+            return StringConverter.to_text("({})").format(result)
+        return result
 
     @staticmethod
-    def error_to_str(error):  # type: (Exception | None) -> str
+    def error_to_str(error):  # type: (BaseException | None) -> str
         """
         error_to_str 将给出的异常转换为 str 类型
 
         Args:
-            error (Exception | None):
+            error (BaseException | None):
                 欲转换为 str 的异常
 
         Returns:
@@ -364,11 +395,11 @@ class Token(object):
         Returns:
             str: 该 Token 的字符串表示
         """
-        prefix = "Token(id={}, name={}".format(
+        prefix = "Token(token_id={}, token_name={}".format(
             self.token_id, StringConverter.str_json_dumps(self.token_name())
         )
         if len(self.token_payload) > 0:
-            prefix += ", payload={}".format(
+            prefix += ", token_payload={}".format(
                 StringConverter.str_json_dumps(self.token_payload)
             )
         return prefix + ", code_begin_ptr={}, code_end_ptr={}, code_row_num={})".format(

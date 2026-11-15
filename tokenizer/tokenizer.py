@@ -23,24 +23,39 @@ class ParseResult(object):
     token_reader = TokenReader([], 0)  # type: TokenReader
     last_begin_ptr = 0  # type: int
     last_end_ptr = 0  # type: int
-    last_row_num = 0  # type: int
+    last_begin_row = 0  # type: int
+    last_end_row = 0  # type: int
     parse_error = None  # type: Exception | None
 
     def __init__(
-        self, reader, begin, end, row, err
-    ):  # type: (TokenReader, int, int, int, Exception | None) -> None
+        self, reader, begin_ptr, end_ptr, begin_row, end_row, err
+    ):  # type: (TokenReader, int, int, int, int, Exception | None) -> None
         self.token_reader = reader
-        self.last_begin_ptr = begin
-        self.last_end_ptr = end
-        self.last_row_num = row
+        self.last_begin_ptr = begin_ptr
+        self.last_end_ptr = end_ptr
+        self.last_begin_row = begin_row
+        self.last_end_row = end_row
         self.parse_error = err
 
+    def reader(self):  # type: () -> TokenReader
+        return self.token_reader
+
+    def debug(self):  # type: () -> tuple[int, int, int, int, Exception | None]
+        return (
+            self.last_begin_ptr,
+            self.last_end_ptr,
+            self.last_begin_row,
+            self.last_end_row,
+            self.parse_error,
+        )
+
     def __repr__(self):  # type: () -> str
-        return "ParseResult(parsed_tokens={}, last_begin_ptr={}, last_end_ptr={}, last_row_num={}, parse_error={})".format(
+        return "ParseResult(parsed_tokens={}, last_begin_ptr={}, last_end_ptr={}, last_begin_row={}, last_end_row={}, parse_error={})".format(
             self.token_reader.buffer(),
             self.last_begin_ptr,
             self.last_end_ptr,
-            self.last_row_num,
+            self.last_begin_row,
+            self.last_end_row,
             StringConverter.str_json_dumps(
                 StringConverter.error_to_str(self.parse_error)
             ),
@@ -175,13 +190,17 @@ class Tokenizer(object):
         tokens = []  # type: list[Token]
 
         while True:
-            begin, row = reader.jump_space().pointer(), reader.row()
+            ptr, row = reader.jump_space().pointer(), reader.row()
             try:
                 token = Tokenizer._parse_next_token(reader)
                 if token is None:
                     break
                 tokens.append(token)
             except Exception as e:
-                return ParseResult(TokenReader(tokens), begin, reader.pointer(), row, e)
+                return ParseResult(
+                    TokenReader(tokens), ptr, reader.pointer(), row, reader.row(), e
+                )
 
-        return ParseResult(TokenReader(tokens), begin, reader.pointer(), row, None)
+        return ParseResult(
+            TokenReader(tokens), ptr, reader.pointer(), row, reader.row(), None
+        )

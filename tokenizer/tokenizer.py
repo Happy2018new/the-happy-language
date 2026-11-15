@@ -78,25 +78,28 @@ class Tokenizer(object):
             else:
                 result += char
 
-        token = Token(
-            token_id=TokenIDLiteral.TOKEN_ID_VARIABLE_NAME,
-            token_payload=result,
+        if result not in TokenIDKeyword.KEYWORD_TO_TOKEN_ID:
+            valid, message = self._validate_var_name(result)
+            if not valid:
+                raise Exception(
+                    "_parse_keyword_or_var: Invalid variable name {} ({})".format(
+                        StringConverter.str_json_dumps(result), message
+                    )
+                )
+            return Token(
+                token_id=TokenIDLiteral.TOKEN_ID_VARIABLE_NAME,
+                token_payload=result,
+                code_begin_ptr=begin,
+                code_end_ptr=reader.pointer(),
+                code_row_num=row,
+            )
+
+        return Token(
+            token_id=TokenIDKeyword.KEYWORD_TO_TOKEN_ID[result],
             code_begin_ptr=begin,
             code_end_ptr=reader.pointer(),
             code_row_num=row,
         )
-        if result in TokenIDKeyword.KEYWORD_TO_TOKEN_ID:
-            token.token_id = TokenIDKeyword.KEYWORD_TO_TOKEN_ID[result]
-            return token
-
-        valid, message = self._validate_var_name(result)
-        if not valid:
-            raise Exception(
-                "_parse_keyword_or_var: Invalid variable name {} ({})".format(
-                    StringConverter.str_json_dumps(result), message
-                )
-            )
-        return token
 
     def _parse_int_or_float(
         self, reader, prefix, begin, row
@@ -125,7 +128,9 @@ class Tokenizer(object):
             _ = float(result)
         except Exception:
             raise Exception(
-                "_parse_int_or_float: Invalid const number {}".format(result)
+                "_parse_int_or_float: Invalid const number {}".format(
+                    StringConverter.to_str(result)
+                )
             )
 
         return Token(
@@ -137,24 +142,23 @@ class Tokenizer(object):
         )
 
     def _parse_next_token(self, reader):  # type: (StringReader) -> Token | None
-        row = reader.row()
-        char = reader.jump_space().read()
+        row, char = reader.row(), reader.read()
         if char == "":
             return None
 
-        if char in TokenIDChar.CHAR_TO_TOKEN_ID:
-            return Token(
-                token_id=TokenIDChar.CHAR_TO_TOKEN_ID[char],
-                code_begin_ptr=reader.pointer() - 1,
-                code_end_ptr=reader.pointer(),
-                code_row_num=row,
-            )
         if char == "'":
             begin = reader.pointer() - 1
             return Token(
                 token_id=TokenIDLiteral.TOKEN_ID_CONST_STRING,
                 token_payload=reader.parse_string(),
                 code_begin_ptr=begin,
+                code_end_ptr=reader.pointer(),
+                code_row_num=row,
+            )
+        if char in TokenIDChar.CHAR_TO_TOKEN_ID:
+            return Token(
+                token_id=TokenIDChar.CHAR_TO_TOKEN_ID[char],
+                code_begin_ptr=reader.pointer() - 1,
                 code_end_ptr=reader.pointer(),
                 code_row_num=row,
             )
@@ -165,19 +169,15 @@ class Tokenizer(object):
 
     def parse_all_token(self, reader):  # type: (StringReader) -> ParseResult
         tokens = []  # type: list[Token]
-        last_ptr = reader.pointer()  # type: int
 
         while True:
+            begin, row = reader.jump_space().pointer(), reader.row()
             try:
-                token, last_ptr = self._parse_next_token(reader), reader.pointer()
+                token = self._parse_next_token(reader)
                 if token is None:
                     break
                 tokens.append(token)
             except Exception as e:
-                return ParseResult(
-                    TokenReader(tokens), last_ptr, reader.pointer(), reader.row(), e
-                )
+                return ParseResult(TokenReader(tokens), begin, reader.pointer(), row, e)
 
-        return ParseResult(
-            TokenReader(tokens), last_ptr, reader.pointer(), reader.row(), None
-        )
+        return ParseResult(TokenReader(tokens), begin, reader.pointer(), row, None)

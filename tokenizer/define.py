@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from typing import Text
+
 import json
 
 
@@ -172,6 +176,123 @@ class TokenIDLiteral(object):
     }
 
 
+class StringConverter(object):
+    """
+    StringConverter 提供了字符串的标准化工具（以及反向实现），
+    它的主要目的是兼容 Python 2 和 Python 3 的字符串类型差异
+    """
+
+    EMPTY_TEXT = b"".decode(encoding="ascii")  # type: Text
+    """
+    EMPTY_TEXT 是空文本的标准形
+    """
+
+    @staticmethod
+    def to_text(string):  # type: (Text | bytes) -> Text
+        """
+        to_text 将给出的字符串化为文本的标准形。
+        在 Python 2 中，将返回 unicode。
+        在 Python 3 中，将返回 str
+
+        Args:
+            string (Text | bytes):
+                欲化为文本标准形的字符串
+
+        Returns:
+            Text: 获得的文本标准形
+        """
+        if isinstance(string, type(StringConverter.EMPTY_TEXT)):
+            return string
+        elif isinstance(string, bytes):
+            return string.decode(encoding="utf-8")
+        else:
+            raise Exception("Should never happened")
+
+    @staticmethod
+    def to_str(string):  # type: (Text | bytes) -> str
+        """
+        to_str 将给出的 string 还原为 str 类型
+
+        Args:
+            string (Text | bytes):
+                给出的 string
+
+        Returns:
+            str: 还原结果
+        """
+        text = StringConverter.to_text(string)
+        if isinstance(text, str):
+            return text
+        return text.encode(encoding="utf-8")
+
+    @staticmethod
+    def error_to_text(error):  # type: (Exception | None) -> Text
+        """
+        error_to_text 将给出的异常转换为文本的标准形
+
+        Args:
+            error (Exception | None):
+                欲化为文本标准形的异常
+
+        Returns:
+            Text: 异常的文本标准形
+        """
+        try:
+            return type(StringConverter.EMPTY_TEXT)(error)
+        except UnicodeDecodeError:
+            return StringConverter.to_text(str(error))
+
+    @staticmethod
+    def error_to_str(error):  # type: (Exception | None) -> str
+        """
+        error_to_str 将给出的异常转换为 str 类型
+
+        Args:
+            error (Exception | None):
+                欲转换为 str 的异常
+
+        Returns:
+            str:
+                异常消息的字符串表示。
+                确保结果的类型是 str
+        """
+        return StringConverter.to_str(StringConverter.error_to_text(error))
+
+    @staticmethod
+    def text_json_dumps(string):  # type: (Text | bytes) -> Text
+        """
+        text_json_dumps 将给出的字符串转换为 JSON 表示。
+        text_json_dumps 确保返回的结果是一个文本的标准形
+
+        Args:
+            string (Text | bytes):
+                给出的字符串
+
+        Returns:
+            Text:
+                该字符串的 JSON 表示。
+                确保结果是一个文本标准形
+        """
+        return json.dumps(StringConverter.to_text(string), ensure_ascii=False)
+
+    @staticmethod
+    def str_json_dumps(string):  # type: (Text | bytes) -> str
+        """
+        str_json_dumps 将给出的字符串转换为 JSON 表示。
+        str_json_dumps 确保返回的结果一定是一个 str
+
+        Args:
+            string (Text | bytes):
+                给出的字符串
+
+        Returns:
+            str:
+                该字符串的 JSON 表示。
+                确保结果的类型是 str
+        """
+        return StringConverter.to_str(StringConverter.text_json_dumps(string))
+
+
 class Token(object):
     """
     Token 是代码中的最小语法单元，它包含了 Token ID 以及它对应的负载信息。
@@ -179,7 +300,7 @@ class Token(object):
     """
 
     token_id = 0  # type: int
-    token_payload = ""  # type: str
+    token_payload = StringConverter.EMPTY_TEXT  # type: Text
     code_begin_ptr = 0  # type: int
     code_end_ptr = 0  # type: int
     code_row_num = 1  # type: int
@@ -187,19 +308,20 @@ class Token(object):
     def __init__(
         self,
         token_id,
-        token_payload="",
+        token_payload=StringConverter.EMPTY_TEXT,
         code_begin_ptr=0,
         code_end_ptr=0,
         code_row_num=1,
-    ):  # type: (int, str, int, int, int) -> None
+    ):  # type: (int, Text, int, int, int) -> None
         """初始化一个新的 Token
 
         Args:
             token_id (int):
                 该 Token 的 ID
-            token_payload (str, optional):
-                该 Token 的负载。
-                默认值为空字符串
+            token_payload (Text, optional):
+                该 Token 的负载信息。
+                负载应是文本的标准形。
+                默认值为空文本的标准形
             code_begin_ptr (int, optional):
                 该 Token 在源代码中的起始位置。
                 默认值为 0
@@ -243,11 +365,11 @@ class Token(object):
             str: 该 Token 的字符串表示
         """
         prefix = "Token(id={}, name={}".format(
-            self.token_id, json.dumps(self.token_name(), ensure_ascii=False)
+            self.token_id, StringConverter.str_json_dumps(self.token_name())
         )
         if len(self.token_payload) > 0:
             prefix += ", payload={}".format(
-                json.dumps(self.token_payload, ensure_ascii=False)
+                StringConverter.str_json_dumps(self.token_payload)
             )
         return prefix + ", code_begin_ptr={}, code_end_ptr={}, code_row_num={})".format(
             self.code_begin_ptr, self.code_end_ptr, self.code_row_num

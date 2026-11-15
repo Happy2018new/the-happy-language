@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import division
 
+TYPE_CHECKING = False
+if TYPE_CHECKING:
+    from typing import Text
+
 import re
-import json
 from .reader import StringReader, TokenReader
-from .define import TokenIDChar, TokenIDKeyword, TokenIDLiteral, Token
+from .define import TokenIDChar, TokenIDKeyword, TokenIDLiteral, StringConverter, Token
 
 VAR_NAME_PATTERN = re.compile(
     (
-        b"\\A[A-Za-z_\\u3400-\\u4dbf\\u4e00-\\u9fff][A-Za-z0-9_\\u3400-\\u4dbf\\u4e00-\\u9fff]*\\Z"
+        b"\\A[A-Za-z_\\u3400-\\u4dbf\\u4e00-\\u9fff]"
         b"[A-Za-z0-9_\\u3400-\\u4dbf\\u4e00-\\u9fff]*\\Z"
-    ).decode("raw_unicode_escape")
+    ).decode(encoding="raw_unicode_escape")
 )
 ORD_ZERO = ord("0")
 ORD_NINE = ord("9")
@@ -38,7 +41,9 @@ class ParseResult(object):
             self.last_begin_ptr,
             self.last_end_ptr,
             self.last_row_num,
-            self.parse_error,
+            StringConverter.str_json_dumps(
+                StringConverter.error_to_str(self.parse_error)
+            ),
         )
 
 
@@ -46,7 +51,7 @@ class Tokenizer(object):
     def __init__(self):  # type: () -> None
         pass
 
-    def _validate_var_name(self, name):  # type: (str) -> tuple[bool, str]
+    def _validate_var_name(self, name):  # type: (Text) -> tuple[bool, str]
         if VAR_NAME_PATTERN.match(name) is None:
             message = "Variable name can only contain letters, numbers, and underscores"
             return False, message
@@ -54,7 +59,7 @@ class Tokenizer(object):
 
     def _parse_int_or_float(
         self, reader, char, begin, row
-    ):  # type: (StringReader, str, int, int) -> Token
+    ):  # type: (StringReader, Text, int, int) -> Token
         result = char
 
         while True:
@@ -86,7 +91,7 @@ class Tokenizer(object):
 
     def _parse_keyword_or_var(
         self, reader, char, begin, row
-    ):  # type: (StringReader, str, int, int) -> Token
+    ):  # type: (StringReader, Text, int, int) -> Token
         result = char
 
         while True:
@@ -117,7 +122,7 @@ class Tokenizer(object):
         if not valid:
             raise Exception(
                 "_parse_keyword_or_var: Invalid variable name {} ({})".format(
-                    json.dumps(result, ensure_ascii=False), message
+                    StringConverter.str_json_dumps(result), message
                 )
             )
         return token

@@ -3,10 +3,9 @@ from __future__ import division
 
 TYPE_CHECKING = False
 if TYPE_CHECKING:
-    from typing import Any
+    from typing import Any, Text
 
-import json
-from .define import Token
+from .define import Token, StringConverter
 
 ESCAPE_CHAR_MAPPING = {
     "t": "\t",
@@ -19,19 +18,20 @@ ESCAPE_CHAR_MAPPING = {
 
 
 class StringReader(object):
-    """StringReader 是字符串的流式阅读器"""
+    """StringReader 是文本的流式阅读器"""
 
-    _buf = ""  # type: str
+    _buf = StringConverter.EMPTY_TEXT  # type: Text
     _ptr = 0  # type: int
     _row = 1  # type: int
 
-    def __init__(self, buf, ptr=0):  # type: (str, int) -> None
+    def __init__(self, buf, ptr=0):  # type: (Text, int) -> None
         """
-        初始化一个新的字符串流式阅读器
+        初始化一个新的文本流式阅读器
 
         Args:
-            buf (str):
-                用于初始化阅读器的字符串
+            buf (Text):
+                用于初始化阅读器的文本。
+                应提供一个文本的标准形
             ptr (int, optional):
                 阅读器的初始指针位置，
                 默认值为 0
@@ -41,12 +41,12 @@ class StringReader(object):
         self._row = 1
         self.set_pointer(ptr)
 
-    def buffer(self):  # type: () -> str
+    def buffer(self):  # type: () -> Text
         """
         buffer 返回该阅读器的底层流
 
         Returns:
-            str: 该阅读器的底层流
+            Text: 该阅读器的底层流
         """
         return self._buf
 
@@ -88,16 +88,16 @@ class StringReader(object):
 
         return self
 
-    def read(self):  # type: () -> str
+    def read(self):  # type: () -> Text
         """
         read 试图从底层流中读取一个字符。
         即便底层流已耗尽，也不会产生错误
 
         Returns:
-            str: 从底层流中读取到的字符串
+            Text: 从底层流中读取到的文本
         """
         if self._ptr >= len(self._buf):
-            return ""
+            return StringConverter.EMPTY_TEXT
 
         result = self._buf[self._ptr]
         if result == "\n":
@@ -106,7 +106,7 @@ class StringReader(object):
 
         return result
 
-    def must_read(self):  # type: () -> str
+    def must_read(self):  # type: () -> Text
         """
         must_read 从底层流读取一个字符，并希望保证这一点。
         这意味着如果没有错误，则它保证返回一个非空的字符串
@@ -117,7 +117,7 @@ class StringReader(object):
                 则将会抛出对应的错误
 
         Returns:
-            str: 从底层流中读取到的单个字符
+            Text: 从底层流中读取到的单个字符
         """
         char = self.read()
         if char == "":
@@ -176,7 +176,7 @@ class StringReader(object):
                 self.unread()
             return self
 
-    def parse_string(self):  # type: () -> str
+    def parse_string(self):  # type: () -> Text
         """
         parse_string 试图从底层流中解析一个由单引号包围的字符串。
         它假定调用者已经从底层流中读取了这个字符串最开头的单引号
@@ -189,9 +189,9 @@ class StringReader(object):
                 则将会抛出对应的错误
 
         Returns:
-            str: 解析得到的字符串
+            Text: 解析得到的文本
         """
-        result = ""
+        result = StringConverter.EMPTY_TEXT
         while True:
             char = self.must_read()
 
@@ -209,7 +209,7 @@ class StringReader(object):
             if sub not in ESCAPE_CHAR_MAPPING:
                 raise Exception(
                     "parse_string: Escape character {} is not supported".format(
-                        json.dumps("\\" + sub, ensure_ascii=False)
+                        StringConverter.str_json_dumps("\\" + sub)
                     )
                 )
             result += ESCAPE_CHAR_MAPPING[sub]

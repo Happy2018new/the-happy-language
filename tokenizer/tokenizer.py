@@ -48,10 +48,8 @@ class ParseResult(object):
 
 
 class Tokenizer(object):
-    def __init__(self):  # type: () -> None
-        pass
-
-    def _validate_var_name(self, name):  # type: (Text) -> tuple[bool, str]
+    @staticmethod
+    def _validate_var_name(name):  # type: (Text) -> tuple[bool, str]
         if len(name) > 0 and ORD_ZERO <= ord(name[0]) <= ORD_NINE:
             message = "Variable name cannot start with a number"
             return False, message
@@ -60,8 +58,9 @@ class Tokenizer(object):
             return False, message
         return True, ""
 
+    @staticmethod
     def _parse_keyword_or_var(
-        self, reader, prefix, begin, row
+        reader, prefix, begin, row
     ):  # type: (StringReader, Text, int, int) -> Token
         result = prefix
 
@@ -79,7 +78,7 @@ class Tokenizer(object):
                 result += char
 
         if result not in TokenIDKeyword.KEYWORD_TO_TOKEN_ID:
-            valid, message = self._validate_var_name(result)
+            valid, message = Tokenizer._validate_var_name(result)
             if not valid:
                 raise Exception(
                     "_parse_keyword_or_var: Invalid variable name {} ({})".format(
@@ -101,8 +100,9 @@ class Tokenizer(object):
             code_row_num=row,
         )
 
+    @staticmethod
     def _parse_int_or_float(
-        self, reader, prefix, begin, row
+        reader, prefix, begin, row
     ):  # type: (StringReader, Text, int, int) -> Token
         result = prefix
 
@@ -122,7 +122,7 @@ class Tokenizer(object):
                 break
             else:
                 reader.unread()
-                return self._parse_keyword_or_var(reader, result, begin, row)
+                return Tokenizer._parse_keyword_or_var(reader, result, begin, row)
 
         try:
             _ = float(result)
@@ -141,7 +141,8 @@ class Tokenizer(object):
             code_row_num=row,
         )
 
-    def _parse_next_token(self, reader):  # type: (StringReader) -> Token | None
+    @staticmethod
+    def _parse_next_token(reader):  # type: (StringReader) -> Token | None
         row, char = reader.row(), reader.read()
         if char == "":
             return None
@@ -163,17 +164,20 @@ class Tokenizer(object):
                 code_row_num=row,
             )
         if ORD_ZERO <= ord(char) <= ORD_NINE:
-            return self._parse_int_or_float(reader, char, reader.pointer() - 1, row)
+            return Tokenizer._parse_int_or_float(
+                reader, char, reader.pointer() - 1, row
+            )
 
-        return self._parse_keyword_or_var(reader, char, reader.pointer() - 1, row)
+        return Tokenizer._parse_keyword_or_var(reader, char, reader.pointer() - 1, row)
 
-    def parse_all_token(self, reader):  # type: (StringReader) -> ParseResult
+    @staticmethod
+    def parse_all_token(reader):  # type: (StringReader) -> ParseResult
         tokens = []  # type: list[Token]
 
         while True:
             begin, row = reader.jump_space().pointer(), reader.row()
             try:
-                token = self._parse_next_token(reader)
+                token = Tokenizer._parse_next_token(reader)
                 if token is None:
                     break
                 tokens.append(token)

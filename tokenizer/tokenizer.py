@@ -52,47 +52,18 @@ class Tokenizer(object):
         pass
 
     def _validate_var_name(self, name):  # type: (Text) -> tuple[bool, str]
+        if len(name) > 0 and ORD_ZERO <= ord(name[0]) <= ORD_NINE:
+            message = "Variable name cannot start with a number"
+            return False, message
         if VAR_NAME_PATTERN.match(name) is None:
             message = "Variable name can only contain letters, numbers, and underscores"
             return False, message
         return True, ""
 
-    def _parse_int_or_float(
-        self, reader, char, begin, row
-    ):  # type: (StringReader, Text, int, int) -> Token
-        result = char
-
-        while True:
-            char = reader.read()
-            if char == "":
-                break
-            elif ORD_ZERO <= ord(char) <= ORD_NINE:
-                result += char
-            elif char == ".":
-                result += char
-            else:
-                reader.unread()
-                break
-
-        try:
-            _ = float(result)
-        except Exception:
-            raise Exception(
-                "_parse_int_or_float: Invalid const number {}".format(result)
-            )
-
-        return Token(
-            token_id=TokenIDLiteral.TOKEN_ID_CONST_NUMBER,
-            token_payload=result,
-            code_begin_ptr=begin,
-            code_end_ptr=reader.pointer(),
-            code_row_num=row,
-        )
-
     def _parse_keyword_or_var(
-        self, reader, char, begin, row
+        self, reader, prefix, begin, row
     ):  # type: (StringReader, Text, int, int) -> Token
-        result = char
+        result = prefix
 
         while True:
             char = reader.read()
@@ -127,6 +98,44 @@ class Tokenizer(object):
             )
         return token
 
+    def _parse_int_or_float(
+        self, reader, prefix, begin, row
+    ):  # type: (StringReader, Text, int, int) -> Token
+        result = prefix
+
+        while True:
+            char = reader.read()
+            if char == "":
+                break
+            elif ORD_ZERO <= ord(char) <= ORD_NINE:
+                result += char
+            elif char == ".":
+                result += char
+            elif char in TokenIDChar.CHAR_TO_TOKEN_ID:
+                reader.unread()
+                break
+            elif char in ["'", " ", "\t", "\r"]:
+                reader.unread()
+                break
+            else:
+                reader.unread()
+                return self._parse_keyword_or_var(reader, result, begin, row)
+
+        try:
+            _ = float(result)
+        except Exception:
+            raise Exception(
+                "_parse_int_or_float: Invalid const number {}".format(result)
+            )
+
+        return Token(
+            token_id=TokenIDLiteral.TOKEN_ID_CONST_NUMBER,
+            token_payload=result,
+            code_begin_ptr=begin,
+            code_end_ptr=reader.pointer(),
+            code_row_num=row,
+        )
+
     def _parse_next_token(self, reader):  # type: (StringReader) -> Token | None
         row = reader.row()
         char = reader.jump_space().read()
@@ -149,9 +158,9 @@ class Tokenizer(object):
                 code_end_ptr=reader.pointer(),
                 code_row_num=row,
             )
-
         if ORD_ZERO <= ord(char) <= ORD_NINE:
             return self._parse_int_or_float(reader, char, reader.pointer() - 1, row)
+
         return self._parse_keyword_or_var(reader, char, reader.pointer() - 1, row)
 
     def parse_all_token(self, reader):  # type: (StringReader) -> ParseResult

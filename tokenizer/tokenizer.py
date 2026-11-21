@@ -11,12 +11,6 @@ from .const import TokenIDChar, TokenIDKeyword, TokenIDLiteral
 from ..utilities.reader import StringReader
 from ..utilities.string import StringConverter
 
-VAR_NAME_PATTERN = re.compile(
-    (
-        b"\\A[A-Za-z_\\u3400-\\u4dbf\\u4e00-\\u9fff]"
-        b"[A-Za-z0-9_\\u3400-\\u4dbf\\u4e00-\\u9fff]*\\Z"
-    ).decode(encoding="raw_unicode_escape")
-)
 ORD_ZERO = ord("0")
 ORD_NINE = ord("9")
 
@@ -56,18 +50,25 @@ class ParseResult(object):
 
 
 class Tokenizer(object):
+    STATIC_NAME_CHECKER = re.compile(
+        (
+            b"\\A[A-Za-z_\\u3400-\\u4dbf\\u4e00-\\u9fff]"
+            b"[A-Za-z0-9_\\u3400-\\u4dbf\\u4e00-\\u9fff]*\\Z"
+        ).decode(encoding="raw_unicode_escape")
+    )
+
     @staticmethod
-    def _validate_var_name(name):  # type: (Text) -> tuple[bool, str]
+    def _validate_static_name(name):  # type: (Text) -> tuple[bool, str]
         if len(name) > 0 and ORD_ZERO <= ord(name[0]) <= ORD_NINE:
-            message = "Variable name cannot start with a number"
+            message = "Variable or attribute name cannot start with a number"
             return False, message
-        if VAR_NAME_PATTERN.match(name) is None:
-            message = "Variable name can only contain letters, numbers, and underscores"
+        if Tokenizer.STATIC_NAME_CHECKER.match(name) is None:
+            message = "Variable or attribute name can only contain letters, numbers, and underscores"
             return False, message
         return True, ""
 
     @staticmethod
-    def _parse_keyword_or_var(
+    def _parse_keyword_or_name(
         reader, prefix, begin, row
     ):  # type: (StringReader, Text, int, int) -> Token
         result = prefix
@@ -86,15 +87,15 @@ class Tokenizer(object):
                 result += char
 
         if result not in TokenIDKeyword.KEYWORD_TO_TOKEN_ID:
-            valid, message = Tokenizer._validate_var_name(result)
+            valid, message = Tokenizer._validate_static_name(result)
             if not valid:
                 raise Exception(
-                    "_parse_keyword_or_var: Invalid variable name {} ({})".format(
+                    "_parse_keyword_or_name: Invalid variable or attribute name {} ({})".format(
                         StringConverter.str_json_dumps(result), message
                     )
                 )
             return Token(
-                token_id=TokenIDLiteral.TOKEN_ID_VARIABLE_NAME,
+                token_id=TokenIDLiteral.TOKEN_ID_STATIC_NAME,
                 token_payload=result,
                 code_begin_ptr=begin,
                 code_end_ptr=reader.pointer(),
@@ -130,7 +131,7 @@ class Tokenizer(object):
                 break
             else:
                 reader.unread()
-                return Tokenizer._parse_keyword_or_var(reader, result, begin, row)
+                return Tokenizer._parse_keyword_or_name(reader, result, begin, row)
 
         try:
             _ = float(result)
@@ -176,7 +177,7 @@ class Tokenizer(object):
                 reader, char, reader.pointer() - 1, row
             )
 
-        return Tokenizer._parse_keyword_or_var(reader, char, reader.pointer() - 1, row)
+        return Tokenizer._parse_keyword_or_name(reader, char, reader.pointer() - 1, row)
 
     @staticmethod
     def parse_all_token(reader):  # type: (StringReader) -> ParseResult

@@ -158,15 +158,15 @@ class TokenIDKeyword(object):
 
 class TokenIDLiteral(object):
     """
-    TokenIDLiteral 是变量名和字面量的 Token ID 枚举
+    TokenIDLiteral 是静态名称和字面量的 Token ID 枚举
     """
 
-    TOKEN_ID_VARIABLE_NAME = 55
+    TOKEN_ID_STATIC_NAME = 55
     TOKEN_ID_CONST_STRING = 56
     TOKEN_ID_CONST_NUMBER = 57
 
     TOKEN_ID_TO_NAME = {
-        TOKEN_ID_VARIABLE_NAME: "variable name",
+        TOKEN_ID_STATIC_NAME: "static name",
         TOKEN_ID_CONST_STRING: "const string",
         TOKEN_ID_CONST_NUMBER: "const number",
     }

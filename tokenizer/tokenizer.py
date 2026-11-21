@@ -63,7 +63,7 @@ class Tokenizer(object):
             message = "Variable or attribute name cannot start with a number"
             return False, message
         if Tokenizer.STATIC_NAME_CHECKER.match(name) is None:
-            message = "Variable or attribute name can only contain letters, numbers, and underscores"
+            message = "Variable or attribute name can only contain letters, numbers and underscores"
             return False, message
         return True, ""
 

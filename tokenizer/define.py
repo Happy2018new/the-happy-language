@@ -87,7 +87,7 @@ class TokenIDKeyword(object):
         if, elif, fi, for, rof, fn, nf
         switch, select, case, end
         continue, break, leave, return
-        try, except, panic
+        defer, try, except, panic
         go, send, receive
         import, from
         True, False, Null
@@ -113,17 +113,18 @@ class TokenIDKeyword(object):
     TOKEN_ID_BREAK = 40
     TOKEN_ID_LEAVE = 41
     TOKEN_ID_RETURN = 42
-    TOKEN_ID_TRY = 43
-    TOKEN_ID_EXCEPT = 44
-    TOKEN_ID_PANIC = 45
-    TOKEN_ID_GO = 46
-    TOKEN_ID_SEND = 47
-    TOKEN_ID_RECEIVE = 48
-    TOKEN_ID_IMPORT = 49
-    TOKEN_ID_FROM = 50
-    TOKEN_ID_TRUE = 51
-    TOKEN_ID_FALSE = 52
-    TOKEN_ID_NULL = 53
+    TOKEN_ID_DEFER = 43
+    TOKEN_ID_TRY = 44
+    TOKEN_ID_EXCEPT = 45
+    TOKEN_ID_PANIC = 46
+    TOKEN_ID_GO = 47
+    TOKEN_ID_SEND = 48
+    TOKEN_ID_RECEIVE = 49
+    TOKEN_ID_IMPORT = 50
+    TOKEN_ID_FROM = 51
+    TOKEN_ID_TRUE = 52
+    TOKEN_ID_FALSE = 53
+    TOKEN_ID_NULL = 54
 
     KEYWORD_TO_TOKEN_ID = {
         "not": TOKEN_ID_NOT,
@@ -145,6 +146,7 @@ class TokenIDKeyword(object):
         "break": TOKEN_ID_BREAK,
         "leave": TOKEN_ID_LEAVE,
         "return": TOKEN_ID_RETURN,
+        "defer": TOKEN_ID_DEFER,
         "try": TOKEN_ID_TRY,
         "except": TOKEN_ID_EXCEPT,
         "panic": TOKEN_ID_PANIC,
@@ -165,9 +167,9 @@ class TokenIDLiteral(object):
     TokenIDLiteral 是变量名和字面量的 Token ID 枚举
     """
 
-    TOKEN_ID_VARIABLE_NAME = 54
-    TOKEN_ID_CONST_STRING = 55
-    TOKEN_ID_CONST_NUMBER = 56
+    TOKEN_ID_VARIABLE_NAME = 55
+    TOKEN_ID_CONST_STRING = 56
+    TOKEN_ID_CONST_NUMBER = 57
 
     TOKEN_ID_TO_NAME = {
         TOKEN_ID_VARIABLE_NAME: "variable name",

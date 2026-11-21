@@ -42,15 +42,6 @@ class ParseResult(object):
     def reader(self):  # type: () -> TokenReader
         return self.token_reader
 
-    def debug(self):  # type: () -> tuple[int, int, int, int, Exception | None]
-        return (
-            self.last_begin_ptr,
-            self.last_end_ptr,
-            self.last_begin_row,
-            self.last_end_row,
-            self.parse_error,
-        )
-
     def __repr__(self):  # type: () -> str
         return "ParseResult(parsed_tokens={}, last_begin_ptr={}, last_end_ptr={}, last_begin_row={}, last_end_row={}, parse_error={})".format(
             self.token_reader.buffer(),
@@ -159,8 +150,8 @@ class Tokenizer(object):
         )
 
     @staticmethod
-    def _parse_next_token(reader):  # type: (StringReader) -> Token | None
-        row, char = reader.row(), reader.read()
+    def _parse_next_token(reader, row):  # type: (StringReader, int) -> Token | None
+        char = reader.read()
         if char == "":
             return None
 
@@ -194,7 +185,7 @@ class Tokenizer(object):
         while True:
             ptr, row = reader.jump_space().pointer(), reader.row()
             try:
-                token = Tokenizer._parse_next_token(reader)
+                token = Tokenizer._parse_next_token(reader, row)
                 if token is None:
                     break
                 tokens.append(token)

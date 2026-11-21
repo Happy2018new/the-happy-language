@@ -6,8 +6,10 @@ if TYPE_CHECKING:
     from typing import Text
 
 import re
-from .reader import StringReader, TokenReader
-from .define import TokenIDChar, TokenIDKeyword, TokenIDLiteral, StringConverter, Token
+from .define import Token, TokenReader
+from .const import TokenIDChar, TokenIDKeyword, TokenIDLiteral
+from ..utilities.reader import StringReader
+from ..utilities.string import StringConverter
 
 VAR_NAME_PATTERN = re.compile(
     (

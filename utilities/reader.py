@@ -5,7 +5,7 @@ TYPE_CHECKING = False
 if TYPE_CHECKING:
     from typing import Any, Text
 
-from .define import Token, StringConverter
+from .string import StringConverter
 
 ESCAPE_CHAR_MAPPING = {
     "t": "\t",
@@ -328,104 +328,3 @@ class ListReader(object):
         if self._ptr - 1 < 0:
             raise Exception("must_unread: Unexpected EOF")
         return self.unread()
-
-
-class TokenReader(ListReader):
-    """TokenReader 是 Token 的流式阅读器"""
-
-    def __init__(self, buf, ptr=0):  # type: (list[Token], int) -> None
-        """初始化一个新的 Token 流式阅读器
-
-        Args:
-            buf (list[Token]):
-                用于初始化阅读器的 Token 列表
-            ptr (int, optional):
-                阅读器的初始指针位置，
-                默认值为 0
-        """
-        ListReader.__init__(self, buf, ptr)
-
-    def buffer(self):  # type: () -> list[Token]
-        """buffer 返回该阅读器的底层流
-
-        Returns:
-            list[Token]: 该阅读器的底层流
-        """
-        return ListReader.buffer(self)
-
-    def pointer(self):  # type: () -> int
-        """
-        pointer 返回该阅读器的当前指针位置
-
-        Returns:
-            int: 该阅读器的当前指针位置
-        """
-        return ListReader.pointer(self)
-
-    def set_pointer(self, ptr):  # type: (int) -> TokenReader
-        """
-        set_pointer 设置该阅读器的当前指针位置。
-        即便提供的指针超出范围，它也可以正常工作
-
-        Args:
-            ptr (int): 阅读器的新指针位置
-
-        Returns:
-            TokenReader: 返回阅读器本身
-        """
-        ListReader.set_pointer(self, ptr)
-        return self
-
-    def read(self):  # type: () -> Token | None
-        """
-        read 试图从底层流中读取一个 Token。
-        如果底层流已被提前耗尽，则返回 None
-
-        Returns:
-            Token | None:
-                从底层流中读取到的 Token。
-                如果流已耗尽，则返回 None
-        """
-        return ListReader.read(self)
-
-    def must_read(self):  # type: () -> Token
-        """
-        must_read 试图从底层流读取一个 Token 并希望保证这一点。
-        这意味着如果该函数没有抛出错误，则它保证返回一个 Token
-
-        Raises:
-            Exception:
-                如果底层流被提前耗尽，
-                则将会抛出对应的错误
-
-        Returns:
-            Token: 从底层流中读取到的 Token
-        """
-        return ListReader.must_read(self)
-
-    def unread(self):  # type: () -> TokenReader
-        """
-        unread 无副作用地撤销对底层流的一个 Token 的读取。
-        即便试图在底层流的开头撤销读取，也不会产生任何错误
-
-        Returns:
-            TokenReader: 返回阅读器本身
-        """
-        ListReader.unread(self)
-        return self
-
-    def must_unread(self):  # type: () -> TokenReader
-        """
-        must_unread 撤销对底层流的一个 Token 的读取，并希望保证这一点。
-        这意味着如果没有抛出错误，则它保证阅读器指针恰好向前移动一个元素
-
-        Raises:
-            Exception:
-                如果撤销后指针的位置超出流的可达范围，
-                则将会抛出对应的错误
-
-        Returns:
-            TokenReader: 返回阅读器本身
-        """
-        ListReader.must_unread(self)
-        return self
